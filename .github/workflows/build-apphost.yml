@@ -112,6 +112,8 @@ jobs:
 
       - name: Test build dotnet app
         if: ${{ matrix.tested != '' }}
+        env: 
+          DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: true
         run: |
           dotnet build apphost/test/Test.csproj
 
