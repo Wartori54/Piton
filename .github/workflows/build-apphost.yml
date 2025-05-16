@@ -47,6 +47,10 @@ jobs:
           - cli
           - gui
 
+        tested:
+          - "-F testmode"
+          - ""
+
         include: 
           # Linux GUI support needs gtk3-devel to be installed
           - target:
@@ -89,7 +93,7 @@ jobs:
 
       - name: Build Piton binary
         working-directory: apphost
-        run: ~/.cargo/bin/cargo build --verbose --release --target ${{ matrix.target.target }} -F ui-${{ matrix.ui }}
+        run: ~/.cargo/bin/cargo build --verbose --release --target ${{ matrix.target.target }} -F ui-${{ matrix.ui }} ${{ matrix.tested }}
 
       - run: mv apphost/target/${{ matrix.target.target }}/release/piton${{ matrix.target.exec_suffix }} piton-${{ matrix.target.name }}-${{ matrix.ui }}${{ matrix.target.exec_suffix }}
 
@@ -99,3 +103,20 @@ jobs:
           name: apphost-${{ matrix.target.name }}-${{ matrix.ui }}
           path: piton-${{ matrix.target.name }}-${{ matrix.ui }}${{ matrix.target.exec_suffix }}
           if-no-files-found: error
+      - name: Test setup dotnet
+        if: ${{ matrix.tested != "" }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.x.x'
+
+      - name: Test build dotnet app
+        if: ${{ matrix.tested != "" }}
+        run: |
+          dotnet build apphost/test/Test.csproj
+
+      - name: Test run
+        if: ${{ matrix.tested != "" }}
+        run: |
+          ./apphost/target/${{ matrix.target.target }}/release/piton${{ matrix.target.exec_suffix }}
+
+
