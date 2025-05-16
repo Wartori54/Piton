@@ -95,7 +95,9 @@ jobs:
         working-directory: apphost
         run: ~/.cargo/bin/cargo build --verbose --release --target ${{ matrix.target.target }} -F ui-${{ matrix.ui }} ${{ matrix.tested }}
 
-      - run: mv apphost/target/${{ matrix.target.target }}/release/piton${{ matrix.target.exec_suffix }} piton-${{ matrix.target.name }}-${{ matrix.ui }}${{ matrix.target.exec_suffix }}
+      - name: Move binary
+        if: ${{ matrix.tested == '' }}
+        run: mv apphost/target/${{ matrix.target.target }}/release/piton${{ matrix.target.exec_suffix }} piton-${{ matrix.target.name }}-${{ matrix.ui }}${{ matrix.target.exec_suffix }}
 
       - name: Upload Piton binary
         if: ${{ matrix.tested == '' }}
