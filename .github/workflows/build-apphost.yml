@@ -48,8 +48,8 @@ jobs:
           - gui
 
         tested:
-          - "-F testmode"
-          - ""
+          - '-F testmode'
+          - ''
 
         include: 
           # Linux GUI support needs gtk3-devel to be installed
@@ -104,18 +104,18 @@ jobs:
           path: piton-${{ matrix.target.name }}-${{ matrix.ui }}${{ matrix.target.exec_suffix }}
           if-no-files-found: error
       - name: Test setup dotnet
-        if: ${{ matrix.tested != "" }}
+        if: ${{ matrix.tested != '' }}
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x.x'
 
       - name: Test build dotnet app
-        if: ${{ matrix.tested != "" }}
+        if: ${{ matrix.tested != '' }}
         run: |
           dotnet build apphost/test/Test.csproj
 
       - name: Test run
-        if: ${{ matrix.tested != "" }}
+        if: ${{ matrix.tested != '' }}
         run: |
           ./apphost/target/${{ matrix.target.target }}/release/piton${{ matrix.target.exec_suffix }}
 
