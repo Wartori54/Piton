@@ -98,6 +98,7 @@ jobs:
       - run: mv apphost/target/${{ matrix.target.target }}/release/piton${{ matrix.target.exec_suffix }} piton-${{ matrix.target.name }}-${{ matrix.ui }}${{ matrix.target.exec_suffix }}
 
       - name: Upload Piton binary
+        if: ${{ matrix.tested == '' }}
         uses: actions/upload-artifact@v4
         with:
           name: apphost-${{ matrix.target.name }}-${{ matrix.ui }}
