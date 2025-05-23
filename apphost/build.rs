@@ -14,11 +14,13 @@ fn main() {
 
     if std::env::var_os("CARGO_FEATURE_TESTAPP").is_some() {
         println!("cargo:rerun-if-changed=test");
-        Command::new("dotnet")
+        let out = Command::new("dotnet")
             .arg("build")
             .arg("test/Test.csproj")
-            .status()
+            .output()
             .expect("Failed to run test C#");
+        println!("cargo:warning={:?}", String::from_utf8(out.stdout).expect("Our bytes should be valid utf8"));
+        println!("cargo:warning={:?}", String::from_utf8(out.stderr).expect("Our bytes should be valid utf8"));
     }
     
     println!("cargo:rerun-if-changed=build.rs")
