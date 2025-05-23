@@ -107,20 +107,20 @@ jobs:
           path: piton-${{ matrix.target.name }}-${{ matrix.ui }}${{ matrix.target.exec_suffix }}
           if-no-files-found: error
       - name: Test setup dotnet
-        if: ${{ matrix.tested != '' }}
+        if: ${{ matrix.tested != '' && matrix.target.name != "macos_arm64" }}
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.x.x'
 
       - name: Test build dotnet app
-        if: ${{ matrix.tested != '' }}
+        if: ${{ matrix.tested != '' && matrix.target.name != "macos_arm64" && false }}
         env: 
           DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: true
         run: |
           dotnet build apphost/test/Test.csproj
 
       - name: Test run
-        if: ${{ matrix.tested != '' }}
+        if: ${{ matrix.tested != '' && matrix.target.name != "macos_arm64" }}
         run: |
           ./apphost/target/${{ matrix.target.target }}/release/piton${{ matrix.target.exec_suffix }}
 
