@@ -15,6 +15,7 @@ fn main() {
     if std::env::var_os("CARGO_FEATURE_TESTAPP").is_some() {
         println!("cargo:rerun-if-changed=test");
         let out = Command::new("dotnet")
+            .env("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "true")
             .arg("build")
             .arg("test/Test.csproj")
             .output()
