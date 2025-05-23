@@ -91,6 +91,12 @@ jobs:
         if: ${{ !steps.cache.outputs.cache-hit }}
         run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profile minimal --default-toolchain ${{ matrix.target.toolchain }} --target ${{ matrix.target.target }} -y
 
+      - name: Test setup dotnet
+        if: ${{ matrix.tested != '' && matrix.target.name != 'macos_arm64' }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.x.x'
+
       - name: Build Piton binary
         working-directory: apphost
         run: ~/.cargo/bin/cargo build --verbose --release --target ${{ matrix.target.target }} -F ui-${{ matrix.ui }} ${{ matrix.tested }}
@@ -106,11 +112,6 @@ jobs:
           name: apphost-${{ matrix.target.name }}-${{ matrix.ui }}
           path: piton-${{ matrix.target.name }}-${{ matrix.ui }}${{ matrix.target.exec_suffix }}
           if-no-files-found: error
-      - name: Test setup dotnet
-        if: ${{ matrix.tested != '' && matrix.target.name != 'macos_arm64' }}
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.x.x'
 
       - name: Test build dotnet app
         if: ${{ matrix.tested != '' && matrix.target.name != 'macos_arm64' && false }}
