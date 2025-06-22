@@ -1,6 +1,6 @@
 use crate::ui::UIDriver;
 
-pub const IS_QUIET: bool = true;
+pub const IS_QUIET: bool = false;
 
 pub const RUNTIME_DESCR_FILE: &str = "piton-runtime.yaml";
 
