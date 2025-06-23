@@ -12,6 +12,14 @@ use cacao::utils::activate_cocoa_multithreading;
 use cacao::view::View;
 use crate::ui::ProgressAction;
 use crate::cfg::UI_APP_NAME;
+use objc::runtime::{Class, Object};
+use objc::{class, msg_send, sel, sel_impl};
+use cacao::foundation::{load_or_register_class, id, nil};
+
+//This is copied from cacao/src/appkit/app/class.rs
+fn register_app_class() -> *const Class {
+    load_or_register_class("NSApplication", "RSTApplication", |decl| unsafe {})
+}
 
 #[derive(Default)]
 struct ProgressState {
@@ -46,6 +54,8 @@ impl ProgressAction for MacOSProgressAction<'_> {
     fn is_cancelled(&self) -> bool { self.state.lock().unwrap().cancelled }
 }
 
+static mut app: Option<App<ProgressDialogApp>> = None;
+
 pub fn run_progress_action<T: Send>(descr: &str, action: impl FnOnce(&MacOSProgressAction) -> T + Send) -> Result<Option<T>, Box<dyn Error>> {
     //Setup the progress state
     let prog_state = Arc::new(Mutex::new(ProgressState::default()));
@@ -61,10 +71,14 @@ pub fn run_progress_action<T: Send>(descr: &str, action: impl FnOnce(&MacOSProgr
         progress_bar: ProgressIndicator::new()
     };
 
-    let app = App::new("io.github.everestapi.piton", ProgressDialogApp {
-        window: Window::with(WindowConfig::default(), window_delegate),
-        state: prog_state.clone()
-    });
+    //App<T> holds a NSAutoReleasePool that will drain when it dropped. This causes a double drain
+    //due to objc also draining it automatically. This is an unsafe hack make it not Drop.
+    unsafe {
+        app = Some(App::new("io.github.everestapi.piton", ProgressDialogApp {
+            window: Window::with(WindowConfig::default(), window_delegate),
+            state: prog_state.clone()
+        }));
+    }
 
     thread::scope(move |scope| {
         //Start the worker thread
@@ -96,7 +110,13 @@ pub fn run_progress_action<T: Send>(descr: &str, action: impl FnOnce(&MacOSProgr
         };
 
         //Run the app
-        app.run();
+        //Normally `app.run()` should go here instead, but that causes a double release on the
+        //NSAutoReleasePool it holds due to a call to `self.pool.drain()`, so the lines down below are a
+        //copy of that method omitting the last line where the pool gets drained.
+        unsafe {
+            let shared_app: id = msg_send![register_app_class(), sharedApplication];
+            let _: () = msg_send![shared_app, run];
+        }
 
         //Set the cancel flag
         prog_state.lock().unwrap().cancelled = true;
@@ -126,7 +146,18 @@ impl AppDelegate for ProgressDialogApp {
         self.window.show();
     }
 
-    fn should_terminate_after_last_window_closed(&self) -> bool { true }
+    fn should_terminate_after_last_window_closed(&self) -> bool { 
+        //Do not terminate automatically since that will completely kill the process and it still
+        //has to run a dotnet app
+        false
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct NSPoint {
+    pub x: f64,
+    pub y: f64,
 }
 
 struct UpdateProgressMsg;
@@ -141,6 +172,30 @@ impl Dispatcher for ProgressDialogApp {
         //Check if the worker thread is done
         if state.done {
             self.window.close();
+            //When the window closes its a great time to requrest the event loop to stop,
+            //unfortunately a simple call to stop will not suffice, since it will only break out of
+            //the loop once it recieves a new event after the stop call.
+            //So just send a custom event with dummy data to trigger that codepath.
+            unsafe {
+                //Request the stop
+                let shared_app: id = msg_send![register_app_class(), sharedApplication];
+                let _: () = msg_send![shared_app, stop: nil];
+
+                //And send a dummy event
+                let ev: *mut Object = msg_send![class!(NSEvent), 
+                                                otherEventWithType: 15 /* NSEventTypeApplicationDefined */
+                                                location: NSPoint {x: 0., y: 0.}
+                                                modifierFlags: 0u64
+                                                timestamp: 0f64
+                                                windowNumber: 0u64
+                                                context: nil
+                                                subtype: 0i16
+                                                data1: 0u64
+                                                data2: 0u64
+                ];
+                let _: () = msg_send![shared_app, postEvent: ev atStart: 0];
+            }
+
             return;
         }
 
